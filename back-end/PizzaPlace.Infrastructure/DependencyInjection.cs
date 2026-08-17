@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PizzaPlace.Application.Common.Interfaces;
 using PizzaPlace.Infrastructure.Persistence;
+using PizzaPlace.Infrastructure.Persistence.Seeding;
 
 namespace PizzaPlace.Infrastructure;
 
@@ -20,6 +21,8 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<PizzaPlaceDbContext>());
+
+        services.AddScoped<CsvDataSeeder>();
 
         return services;
     }

@@ -1,0 +1,6 @@
+﻿<Solution>
+  <Project Path="PizzaPlace.Api/PizzaPlace.Api.csproj" />
+  <Project Path="PizzaPlace.Application/PizzaPlace.Application.csproj" />
+  <Project Path="PizzaPlace.Domain/PizzaPlace.Domain.csproj" />
+  <Project Path="PizzaPlace.Infrastructure/PizzaPlace.Infrastructure.csproj" />
+</Solution>
