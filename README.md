@@ -4,6 +4,8 @@ Full-stack pizza sales analytics platform. An ASP.NET Core Web API serves catalo
 
 ## Project description
 
+24Hour Code Challenge | Full Stack Developer (.Net, C#, API, Angular) | Brixton Ray Villanueva
+
 Pizza Place loads historical pizza shop data (pizzas, pizza types, orders, and order line items) into SQL Server, then exposes REST endpoints for:
 
 - **Catalog browsing** — pizzas, pizza types, orders, and order details
