@@ -12,7 +12,18 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "PizzaPlace API",
         Version = "v1",
-        Description = "RESTful API for Pizza Place"
+        Description = "RESTful API for Pizza Place sales and catalog data"
+    });
+});
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendDev", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:4200",
+                "https://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 builder.Services.AddApplication();
@@ -37,7 +48,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("FrontendDev");
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

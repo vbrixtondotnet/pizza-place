@@ -1,0 +1,61 @@
+<section class="dashboard">
+  <header class="dashboard__intro">
+    <div>
+      <p class="eyebrow">Operations overview</p>
+      <h1>Sales dashboard</h1>
+      <p class="subtitle">
+        Monitor revenue, demand patterns, and line-level pizza sales across the selected period.
+      </p>
+    </div>
+
+    @if (facade.dashboard(); as dashboard) {
+      <mat-card class="range-chip" appearance="outlined">
+        <span>Active range</span>
+        <strong>
+          {{ dashboard.fromDate | date: 'MMM d, y' }}
+          –
+          {{ dashboard.toDate | date: 'MMM d, y' }}
+        </strong>
+      </mat-card>
+    }
+  </header>
+
+  <mat-card class="filters-card" appearance="outlined">
+    <app-sales-filters
+      [filters]="facade.filters()"
+      [filterOptions]="facade.filterOptions()"
+      (filtersChange)="onFiltersChange($event)"
+      (clear)="onClearSearch()"
+    />
+  </mat-card>
+
+  @if (facade.dashboardError(); as error) {
+    <app-error-banner [message]="error" (retry)="facade.reload()" />
+  }
+
+  @if (facade.dashboardLoading() && !facade.dashboard()) {
+    <app-loading-state message="Loading dashboard insights…" />
+  } @else if (facade.dashboard(); as dashboard) {
+    <app-kpi-cards [kpis]="dashboard.kpis" />
+
+    <div class="dashboard__grid">
+      <app-trend-chart [points]="dashboard.dailyTrend" />
+      <app-insights-panel [insights]="dashboard.insights" />
+      <app-category-chart [categories]="dashboard.categoryBreakdown" />
+      <app-top-pizzas-chart [pizzas]="dashboard.topPizzas" />
+    </div>
+  }
+
+  @if (facade.salesError(); as salesError) {
+    <app-error-banner title="Unable to load sales" [message]="salesError" (retry)="facade.reload()" />
+  }
+
+  <app-sales-table
+    [sales]="facade.sales()"
+    [loading]="facade.salesLoading()"
+    [sortBy]="facade.filters().sortBy"
+    [sortDirection]="facade.filters().sortDirection"
+    (pageChange)="onPageChange($event)"
+    (sortChange)="onSortChange($event)"
+  />
+</section>

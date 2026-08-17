@@ -2,8 +2,22 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/back-end/.vs/PizzaPlace.slnx
-
-# Build outputs
+# Visual Studio / .NET
 **/bin/
 **/obj/
+**/.vs/
+*.user
+*.suo
+TestResults/
+
+# Node / Angular
+**/node_modules/
+**/dist/
+**/.angular/
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
