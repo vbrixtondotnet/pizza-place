@@ -1,0 +1,23 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+# Visual Studio / .NET
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.suo
+TestResults/
+
+# Node / Angular
+**/node_modules/
+**/dist/
+**/.angular/
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/

@@ -1,0 +1,29 @@
+@PizzaPlace.Api_HostAddress = http://localhost:5063
+
+### Catalog
+GET {{PizzaPlace.Api_HostAddress}}/api/Pizzas
+Accept: application/json
+
+###
+GET {{PizzaPlace.Api_HostAddress}}/api/PizzaTypes
+Accept: application/json
+
+###
+GET {{PizzaPlace.Api_HostAddress}}/api/Orders
+Accept: application/json
+
+### Sales dashboard insights
+GET {{PizzaPlace.Api_HostAddress}}/api/sales/dashboard?fromDate=2015-01-01&toDate=2015-01-31
+Accept: application/json
+
+### Sales dashboard insights filtered by category and size
+GET {{PizzaPlace.Api_HostAddress}}/api/sales/dashboard?fromDate=2015-01-01&toDate=2015-01-31&category=Chicken&size=L
+Accept: application/json
+
+### Sales search with filters
+GET {{PizzaPlace.Api_HostAddress}}/api/sales?fromDate=2015-01-01&toDate=2015-01-31&query=chicken&category=Chicken&size=L&page=1&pageSize=25&sortBy=lineRevenue&sortDirection=desc
+Accept: application/json
+
+### Sales filter options
+GET {{PizzaPlace.Api_HostAddress}}/api/sales/filters
+Accept: application/json
