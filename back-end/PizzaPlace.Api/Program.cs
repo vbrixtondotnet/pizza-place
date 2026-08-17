@@ -1,3 +1,4 @@
+using PizzaPlace.Application;
 using PizzaPlace.Infrastructure;
 using PizzaPlace.Infrastructure.Persistence.Seeding;
 
@@ -14,6 +15,7 @@ builder.Services.AddSwaggerGen(options =>
         Description = "RESTful API for Pizza Place"
     });
 });
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
