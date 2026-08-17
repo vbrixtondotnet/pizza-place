@@ -240,4 +240,4 @@ Invalid sales query parameters return **400** with validation problem details.
 
 ## License / scope
 
-Project code and sample sales data are intended for local development and demonstration of the Pizza Place sales dashboard and API.
+Project code and sample sales data are intended for local development and demonstration of the 24Hour Code Challenge | Full Stack Developer (.Net, C#, API, Angular) | Brixton Ray Villanueva
