@@ -14,15 +14,6 @@ public class OrderDetailService : IOrderDetailService
         _context = context;
     }
 
-    public async Task<IReadOnlyList<OrderDetailDto>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        return await _context.OrderDetails
-            .AsNoTracking()
-            .OrderBy(od => od.OrderDetailsId)
-            .Select(od => new OrderDetailDto(od.OrderDetailsId, od.OrderId, od.PizzaId, od.Quantity))
-            .ToListAsync(cancellationToken);
-    }
-
     public async Task<OrderDetailDto?> GetByIdAsync(int orderDetailsId, CancellationToken cancellationToken = default)
     {
         return await _context.OrderDetails
