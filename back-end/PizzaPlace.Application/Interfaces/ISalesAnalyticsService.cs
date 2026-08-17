@@ -5,8 +5,7 @@ namespace PizzaPlace.Application.Interfaces;
 public interface ISalesAnalyticsService
 {
     Task<SalesDashboardDto> GetDashboardAsync(
-        DateOnly? fromDate,
-        DateOnly? toDate,
+        SalesDashboardQuery query,
         CancellationToken cancellationToken = default);
 
     Task<PagedResultDto<SalesLineItemDto>> SearchSalesAsync(

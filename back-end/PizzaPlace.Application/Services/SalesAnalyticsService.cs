@@ -29,19 +29,36 @@ public class SalesAnalyticsService : ISalesAnalyticsService
     }
 
     public async Task<SalesDashboardDto> GetDashboardAsync(
-        DateOnly? fromDate,
-        DateOnly? toDate,
+        SalesDashboardQuery query,
         CancellationToken cancellationToken = default)
     {
-        var (resolvedFrom, resolvedTo) = await ResolveDateRangeAsync(fromDate, toDate, cancellationToken);
+        ArgumentNullException.ThrowIfNull(query);
+
+        var (resolvedFrom, resolvedTo) = await ResolveDateRangeAsync(
+            query.FromDate,
+            query.ToDate,
+            cancellationToken);
         ValidateDateRange(resolvedFrom, resolvedTo);
 
         var periodLengthDays = resolvedTo.DayNumber - resolvedFrom.DayNumber + 1;
         var previousTo = resolvedFrom.AddDays(-1);
         var previousFrom = previousTo.AddDays(-(periodLengthDays - 1));
 
-        var currentLines = await GetSalesLinesAsync(resolvedFrom, resolvedTo, cancellationToken);
-        var previousRevenue = await GetRevenueAsync(previousFrom, previousTo, cancellationToken);
+        var currentLines = await BuildSalesQuery(
+                resolvedFrom,
+                resolvedTo,
+                query.Query,
+                query.Category,
+                query.Size)
+            .ToListAsync(cancellationToken);
+
+        var previousRevenue = await GetRevenueAsync(
+            previousFrom,
+            previousTo,
+            query.Query,
+            query.Category,
+            query.Size,
+            cancellationToken);
 
         var totalRevenue = currentLines.Sum(x => x.LineRevenue);
         var pizzasSold = currentLines.Sum(x => x.Quantity);
@@ -69,20 +86,22 @@ public class SalesAnalyticsService : ISalesAnalyticsService
 
         var dailyTrend = currentLines
             .GroupBy(x => x.Date)
-            .OrderBy(g => g.Key)
-            .Select(g => new DailySalesPointDto(
-                g.Key,
-                g.Sum(x => x.LineRevenue),
-                g.Select(x => x.OrderId).Distinct().Count(),
-                g.Sum(x => x.Quantity)))
-            .ToList();
+            .ToDictionary(
+                g => g.Key,
+                g => new DailySalesPointDto(
+                    g.Key,
+                    g.Sum(x => x.LineRevenue),
+                    g.Select(x => x.OrderId).Distinct().Count(),
+                    g.Sum(x => x.Quantity)));
 
         // Fill missing days with zeros so charts remain continuous.
         var filledDailyTrend = new List<DailySalesPointDto>();
         for (var day = resolvedFrom; day <= resolvedTo; day = day.AddDays(1))
         {
-            var existing = dailyTrend.FirstOrDefault(x => x.Date == day);
-            filledDailyTrend.Add(existing ?? new DailySalesPointDto(day, 0m, 0, 0));
+            filledDailyTrend.Add(
+                dailyTrend.TryGetValue(day, out var existing)
+                    ? existing
+                    : new DailySalesPointDto(day, 0m, 0, 0));
         }
 
         var categoryBreakdown = currentLines
@@ -188,53 +207,17 @@ public class SalesAnalyticsService : ISalesAnalyticsService
             cancellationToken);
         ValidateDateRange(resolvedFrom, resolvedTo);
 
-        var salesQuery =
-            from detail in _context.OrderDetails.AsNoTracking()
-            join order in _context.Orders.AsNoTracking() on detail.OrderId equals order.OrderId
-            join pizza in _context.Pizzas.AsNoTracking() on detail.PizzaId equals pizza.PizzaId
-            join pizzaType in _context.PizzaTypes.AsNoTracking() on pizza.PizzaTypeId equals pizzaType.PizzaTypeId
-            where order.Date >= resolvedFrom && order.Date <= resolvedTo
-            select new
-            {
-                detail.OrderDetailsId,
-                detail.OrderId,
-                order.Date,
-                order.Time,
-                detail.PizzaId,
-                PizzaName = pizzaType.Name,
-                pizzaType.Category,
-                pizza.Size,
-                detail.Quantity,
-                UnitPrice = pizza.Price,
-                LineRevenue = detail.Quantity * pizza.Price
-            };
-
-        if (!string.IsNullOrWhiteSpace(query.Category))
-        {
-            var category = query.Category.Trim();
-            salesQuery = salesQuery.Where(x => x.Category == category);
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.Size))
-        {
-            var size = query.Size.Trim();
-            salesQuery = salesQuery.Where(x => x.Size == size);
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.Query))
-        {
-            var term = query.Query.Trim().ToLower();
-            salesQuery = salesQuery.Where(x =>
-                x.PizzaName.ToLower().Contains(term)
-                || x.Category.ToLower().Contains(term)
-                || x.PizzaId.ToLower().Contains(term)
-                || x.OrderId.ToString().Contains(term));
-        }
+        var salesQuery = BuildSalesQuery(
+            resolvedFrom,
+            resolvedTo,
+            query.Query,
+            query.Category,
+            query.Size);
 
         var totalCount = await salesQuery.CountAsync(cancellationToken);
         var isDescending = string.Equals(query.SortDirection, "desc", StringComparison.OrdinalIgnoreCase);
 
-        salesQuery = (query.SortBy.ToLowerInvariant()) switch
+        salesQuery = query.SortBy.ToLowerInvariant() switch
         {
             "time" => isDescending
                 ? salesQuery.OrderByDescending(x => x.Time).ThenByDescending(x => x.OrderDetailsId)
@@ -328,6 +311,59 @@ public class SalesAnalyticsService : ISalesAnalyticsService
             dateBounds?.MaxDate);
     }
 
+    private IQueryable<SalesLineRow> BuildSalesQuery(
+        DateOnly fromDate,
+        DateOnly toDate,
+        string? searchTerm,
+        string? category,
+        string? size)
+    {
+        var salesQuery =
+            from detail in _context.OrderDetails.AsNoTracking()
+            join order in _context.Orders.AsNoTracking() on detail.OrderId equals order.OrderId
+            join pizza in _context.Pizzas.AsNoTracking() on detail.PizzaId equals pizza.PizzaId
+            join pizzaType in _context.PizzaTypes.AsNoTracking() on pizza.PizzaTypeId equals pizzaType.PizzaTypeId
+            where order.Date >= fromDate && order.Date <= toDate
+            select new SalesLineRow
+            {
+                OrderDetailsId = detail.OrderDetailsId,
+                OrderId = detail.OrderId,
+                Date = order.Date,
+                Time = order.Time,
+                PizzaId = detail.PizzaId,
+                PizzaName = pizzaType.Name,
+                Category = pizzaType.Category,
+                Size = pizza.Size,
+                Quantity = detail.Quantity,
+                UnitPrice = pizza.Price,
+                LineRevenue = detail.Quantity * pizza.Price
+            };
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            var trimmedCategory = category.Trim();
+            salesQuery = salesQuery.Where(x => x.Category == trimmedCategory);
+        }
+
+        if (!string.IsNullOrWhiteSpace(size))
+        {
+            var trimmedSize = size.Trim();
+            salesQuery = salesQuery.Where(x => x.Size == trimmedSize);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLower();
+            salesQuery = salesQuery.Where(x =>
+                x.PizzaName.ToLower().Contains(term)
+                || x.Category.ToLower().Contains(term)
+                || x.PizzaId.ToLower().Contains(term)
+                || x.OrderId.ToString().Contains(term));
+        }
+
+        return salesQuery;
+    }
+
     private async Task<(DateOnly From, DateOnly To)> ResolveDateRangeAsync(
         DateOnly? fromDate,
         DateOnly? toDate,
@@ -367,31 +403,12 @@ public class SalesAnalyticsService : ISalesAnalyticsService
         }
     }
 
-    private async Task<List<SalesLineProjection>> GetSalesLinesAsync(
-        DateOnly fromDate,
-        DateOnly toDate,
-        CancellationToken cancellationToken)
-    {
-        return await (
-            from detail in _context.OrderDetails.AsNoTracking()
-            join order in _context.Orders.AsNoTracking() on detail.OrderId equals order.OrderId
-            join pizza in _context.Pizzas.AsNoTracking() on detail.PizzaId equals pizza.PizzaId
-            join pizzaType in _context.PizzaTypes.AsNoTracking() on pizza.PizzaTypeId equals pizzaType.PizzaTypeId
-            where order.Date >= fromDate && order.Date <= toDate
-            select new SalesLineProjection(
-                detail.OrderId,
-                order.Date,
-                order.Time,
-                pizzaType.Name,
-                pizzaType.Category,
-                detail.Quantity,
-                detail.Quantity * pizza.Price))
-            .ToListAsync(cancellationToken);
-    }
-
     private async Task<decimal> GetRevenueAsync(
         DateOnly fromDate,
         DateOnly toDate,
+        string? searchTerm,
+        string? category,
+        string? size,
         CancellationToken cancellationToken)
     {
         if (fromDate > toDate)
@@ -399,21 +416,22 @@ public class SalesAnalyticsService : ISalesAnalyticsService
             return 0m;
         }
 
-        return await (
-            from detail in _context.OrderDetails.AsNoTracking()
-            join order in _context.Orders.AsNoTracking() on detail.OrderId equals order.OrderId
-            join pizza in _context.Pizzas.AsNoTracking() on detail.PizzaId equals pizza.PizzaId
-            where order.Date >= fromDate && order.Date <= toDate
-            select detail.Quantity * pizza.Price)
-            .SumAsync(cancellationToken);
+        return await BuildSalesQuery(fromDate, toDate, searchTerm, category, size)
+            .SumAsync(x => x.LineRevenue, cancellationToken);
     }
 
-    private sealed record SalesLineProjection(
-        int OrderId,
-        DateOnly Date,
-        TimeOnly Time,
-        string PizzaName,
-        string Category,
-        int Quantity,
-        decimal LineRevenue);
+    private sealed class SalesLineRow
+    {
+        public int OrderDetailsId { get; init; }
+        public int OrderId { get; init; }
+        public DateOnly Date { get; init; }
+        public TimeOnly Time { get; init; }
+        public string PizzaId { get; init; } = string.Empty;
+        public string PizzaName { get; init; } = string.Empty;
+        public string Category { get; init; } = string.Empty;
+        public string Size { get; init; } = string.Empty;
+        public int Quantity { get; init; }
+        public decimal UnitPrice { get; init; }
+        public decimal LineRevenue { get; init; }
+    }
 }

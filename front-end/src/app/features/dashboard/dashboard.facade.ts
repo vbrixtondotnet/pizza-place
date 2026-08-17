@@ -13,6 +13,7 @@ import {
 
 import { getErrorMessage } from '../../core/api/error-utils';
 import {
+  DashboardQueryParams,
   PagedResult,
   SalesDashboard,
   SalesFilterOptions,
@@ -77,17 +78,17 @@ export class DashboardFacade {
 
   private readonly dashboardRequest = toSignal(
     toObservable(
-      computed(() => ({
-        enabled: this.enableRequests(),
-        fromDate: this.filtersState().fromDate,
-        toDate: this.filtersState().toDate,
-      })),
+      computed(() => {
+        const filters = this.filtersState();
+        return {
+          enabled: this.enableRequests(),
+          params: this.toDashboardParams(filters),
+        };
+      }),
     ).pipe(
-      distinctUntilChanged(
-        (a, b) =>
-          a.enabled === b.enabled && a.fromDate === b.fromDate && a.toDate === b.toDate,
-      ),
-      switchMap(({ enabled, fromDate, toDate }) => {
+      debounceTime(250),
+      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+      switchMap(({ enabled, params }) => {
         if (!enabled) {
           return of(null);
         }
@@ -95,7 +96,7 @@ export class DashboardFacade {
         this.dashboardLoadingState.set(true);
         this.dashboardErrorState.set(null);
 
-        return this.salesApi.getDashboard({ fromDate, toDate }).pipe(
+        return this.salesApi.getDashboard(params).pipe(
           tap((dashboard) => this.dashboardState.set(dashboard)),
           catchError((error) => {
             this.dashboardState.set(null);
@@ -218,6 +219,16 @@ export class DashboardFacade {
 
   reload(): void {
     this.filtersState.update((current) => ({ ...current }));
+  }
+
+  private toDashboardParams(filters: DashboardFilters): DashboardQueryParams {
+    return {
+      fromDate: filters.fromDate,
+      toDate: filters.toDate,
+      query: filters.query.trim() || null,
+      category: filters.category,
+      size: filters.size,
+    };
   }
 
   private toSearchParams(filters: DashboardFilters): SalesSearchParams {

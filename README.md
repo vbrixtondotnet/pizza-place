@@ -33,7 +33,7 @@ On startup the API migrates the database and seeds CSV data from `PizzaPlace.Api
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /api/sales/dashboard?fromDate&toDate` | KPI cards, prior-period revenue change, peak weekday/hour, daily trend, category mix, top pizzas |
+| `GET /api/sales/dashboard?fromDate&toDate&query&category&size` | KPI cards, prior-period revenue change, peak weekday/hour, daily trend, category mix, top pizzas. Honours the same search/category/size filters as the sales list so every statistic reflects the active filters |
 | `GET /api/sales?fromDate&toDate&query&category&size&page&pageSize&sortBy&sortDirection` | Paginated searchable sales line items |
 | `GET /api/sales/filters` | Distinct categories/sizes and available date bounds |
 

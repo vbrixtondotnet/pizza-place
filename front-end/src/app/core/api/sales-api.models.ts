@@ -89,4 +89,7 @@ export interface SalesSearchParams {
 export interface DashboardQueryParams {
   fromDate?: string | null;
   toDate?: string | null;
+  query?: string | null;
+  category?: string | null;
+  size?: string | null;
 }

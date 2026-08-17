@@ -52,6 +52,44 @@ describe('SalesApiService', () => {
     });
   });
 
+  it('forwards category, size, and search filters to the dashboard endpoint', () => {
+    service
+      .getDashboard({
+        fromDate: '2015-01-01',
+        toDate: '2015-01-31',
+        query: 'chicken',
+        category: 'Chicken',
+        size: 'L',
+      })
+      .subscribe();
+
+    const request = httpMock.expectOne(
+      `${environment.apiBaseUrl}/sales/dashboard?fromDate=2015-01-01&toDate=2015-01-31&query=chicken&category=Chicken&size=L`,
+    );
+    expect(request.request.method).toBe('GET');
+    request.flush({
+      fromDate: '2015-01-01',
+      toDate: '2015-01-31',
+      kpis: {
+        totalRevenue: 0,
+        orderCount: 0,
+        pizzasSold: 0,
+        averageOrderValue: 0,
+        averagePizzasPerOrder: 0,
+        revenueChangePercent: null,
+      },
+      insights: {
+        peakWeekday: null,
+        peakHour: null,
+        topCategory: null,
+        topPizzaName: null,
+      },
+      dailyTrend: [],
+      categoryBreakdown: [],
+      topPizzas: [],
+    });
+  });
+
   it('omits empty search filters from the request', () => {
     service
       .searchSales({

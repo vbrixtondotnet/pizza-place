@@ -12,9 +12,11 @@ public class SalesAnalyticsServiceTests
         await using var context = await SalesTestFixture.CreateSeededContextAsync();
         var service = new SalesAnalyticsService(context);
 
-        var dashboard = await service.GetDashboardAsync(
-            new DateOnly(2015, 1, 5),
-            new DateOnly(2015, 1, 11));
+        var dashboard = await service.GetDashboardAsync(new SalesDashboardQuery
+        {
+            FromDate = new DateOnly(2015, 1, 5),
+            ToDate = new DateOnly(2015, 1, 11)
+        });
 
         Assert.Equal(40m, dashboard.Kpis.TotalRevenue);
         Assert.Equal(2, dashboard.Kpis.OrderCount);
@@ -91,11 +93,57 @@ public class SalesAnalyticsServiceTests
         var service = new SalesAnalyticsService(context);
 
         var exception = await Assert.ThrowsAsync<ValidationException>(() =>
-            service.GetDashboardAsync(
-                new DateOnly(2015, 2, 1),
-                new DateOnly(2015, 1, 1)));
+            service.GetDashboardAsync(new SalesDashboardQuery
+            {
+                FromDate = new DateOnly(2015, 2, 1),
+                ToDate = new DateOnly(2015, 1, 1)
+            }));
 
         Assert.True(exception.Errors.ContainsKey("fromDate"));
+    }
+
+    [Fact]
+    public async Task GetDashboardAsync_AppliesCategoryAndSizeFiltersToInsights()
+    {
+        await using var context = await SalesTestFixture.CreateSeededContextAsync();
+        var service = new SalesAnalyticsService(context);
+
+        var dashboard = await service.GetDashboardAsync(new SalesDashboardQuery
+        {
+            FromDate = new DateOnly(2015, 1, 1),
+            ToDate = new DateOnly(2015, 1, 31),
+            Category = "Chicken",
+            Size = "L"
+        });
+
+        Assert.Equal(20m, dashboard.Kpis.TotalRevenue);
+        Assert.Equal(1, dashboard.Kpis.OrderCount);
+        Assert.Equal(1, dashboard.Kpis.PizzasSold);
+        Assert.Equal("Chicken", dashboard.Insights.TopCategory);
+        Assert.Equal("BBQ Chicken", dashboard.Insights.TopPizzaName);
+        Assert.Equal("Tuesday", dashboard.Insights.PeakWeekday);
+        Assert.Equal(18, dashboard.Insights.PeakHour);
+        Assert.Single(dashboard.CategoryBreakdown);
+        Assert.Single(dashboard.TopPizzas);
+        Assert.Equal(20m, dashboard.DailyTrend.Sum(x => x.Revenue));
+    }
+
+    [Fact]
+    public async Task GetDashboardAsync_AppliesSearchTermToPriorPeriodComparison()
+    {
+        await using var context = await SalesTestFixture.CreateSeededContextAsync();
+        var service = new SalesAnalyticsService(context);
+
+        var dashboard = await service.GetDashboardAsync(new SalesDashboardQuery
+        {
+            FromDate = new DateOnly(2015, 1, 5),
+            ToDate = new DateOnly(2015, 1, 11),
+            Query = "chicken"
+        });
+
+        // Current window has one BBQ Chicken line at $20; the prior window has three at $60.
+        Assert.Equal(20m, dashboard.Kpis.TotalRevenue);
+        Assert.Equal(-66.67m, dashboard.Kpis.RevenueChangePercent);
     }
 
     [Fact]

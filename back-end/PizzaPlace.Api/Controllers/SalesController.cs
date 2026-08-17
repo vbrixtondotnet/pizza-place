@@ -20,16 +20,12 @@ public class SalesController : ControllerBase
     [ProducesResponseType(typeof(SalesDashboardDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetDashboard(
-        [FromQuery] DateOnly? fromDate,
-        [FromQuery] DateOnly? toDate,
+        [FromQuery] SalesDashboardQuery query,
         CancellationToken cancellationToken)
     {
         try
         {
-            var dashboard = await _salesAnalyticsService.GetDashboardAsync(
-                fromDate,
-                toDate,
-                cancellationToken);
+            var dashboard = await _salesAnalyticsService.GetDashboardAsync(query, cancellationToken);
             return Ok(dashboard);
         }
         catch (ValidationException ex)
